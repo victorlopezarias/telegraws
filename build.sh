@@ -14,6 +14,25 @@ elif [ "$1" = "--lambda" ]; then
     MODE="lambda"
 fi
 
+validate_cron_expression() {
+    echo "🔎 Validating cron expression: cron($CRON_EXPRESSION)"
+
+    if ! aws events put-rule \
+        --name "telegraws-${FUNCTION_NAME}-cron-validation" \
+        --schedule-expression "cron($CRON_EXPRESSION)" \
+        --state DISABLED >/dev/null 2>&1; then
+        echo "❌ Invalid cron expression: $CRON_EXPRESSION"
+        echo "💡 Enter raw expression, eg: 'lambdaCronExpression": "0 * * * ? *'"
+        echo "💡 AWS EventBridge cron syntax: Minutes Hours Day-of-month Month Day-of-week Year"
+        exit 1
+    fi
+
+    aws events delete-rule --name "telegraws-${FUNCTION_NAME}-cron-validation" >/dev/null 2>&1
+
+    echo "✅ Cron expression is valid"
+}
+
+
 get_function_name() {
     if [ ! -f "$CONFIG_FILE" ]; then
         echo "❌ Config file not found: $CONFIG_FILE"
@@ -215,6 +234,7 @@ fi
 # Get configuration
 get_function_name
 get_cron_expression
+validate_cron_expression
 get_aws_account_id
 get_aws_region
 

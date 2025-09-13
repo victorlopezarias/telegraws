@@ -44,7 +44,8 @@ cp config/config-template.json config/config.json
 - Telegraws creates these resources: Lambda function, IAM role, Eventbridge
   rule. All prefixed by 'telegraws-'.
 - lambdaCronExpression: EventBridge cron schedule (AWS format: Minutes Hours Day
-  Month DayOfWeek Year).
+  Month DayOfWeek Year). Requires raw expression, eg:
+  `"lambdaCronExpression": "0 * * * ? *"`.
 - timezone: Go time.LoadLocation compatible timezone.
 - defaultPeriod: Hours to look back for regular reports (1 = last hour).
 - dailyReportHour: Hour to send daily summary (respects timezone).
