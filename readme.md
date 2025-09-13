@@ -29,7 +29,7 @@ Telegram.
 ## Usage
 
 ```bash
-git clone https://github.com/alwaysvitorious/telegraws.git
+git clone https://github.com/victorlopezarias/telegraws.git
 cd telegraws
 go mod tidy
 cp config/config-template.json config/config.json
