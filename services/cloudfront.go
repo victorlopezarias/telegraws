@@ -23,11 +23,12 @@ func CloudFrontMetrics(ctx context.Context, cwClient *cloudwatch.Client, distrib
 		Unit      string
 	}{
 		{"Requests", "Sum", "Count"},
-		{"BytesDownloaded", "Sum", "Bytes"},
 		{"4xxErrorRate", "Average", "Percent"},
 		{"5xxErrorRate", "Average", "Percent"},
 		{"CacheHitRate", "Average", "Percent"},
 		{"OriginLatency", "Average", "Milliseconds"},
+		{"BytesUploaded", "Sum", "Bytes"},
+		{"BytesDownloaded", "Sum", "Bytes"},
 	}
 
 	for _, metric := range cloudFrontMetrics {

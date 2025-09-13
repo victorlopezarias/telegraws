@@ -89,10 +89,13 @@ func S3Metrics(ctx context.Context, cwClient *cloudwatch.Client, bucketName stri
 	requestMetrics := []struct {
 		Name      string
 		Statistic string
+		Unit      string
 	}{
-		{"AllRequests", "Sum"},
-		{"4xxErrors", "Sum"},
-		{"5xxErrors", "Sum"},
+		{"AllRequests", "Sum", "Count"},
+		{"4xxErrors", "Sum", "Count"},
+		{"5xxErrors", "Sum", "Count"},
+		{"BytesUploaded", "Sum", "Bytes"},
+		{"BytesDownloaded", "Sum", "Bytes"},
 	}
 
 	// Use hourly period for request metrics
@@ -117,6 +120,7 @@ func S3Metrics(ctx context.Context, cwClient *cloudwatch.Client, bucketName stri
 			EndTime:    aws.Time(timeParams["endTime"]),
 			Period:     requestPeriod,
 			Statistics: []types.Statistic{types.Statistic(metric.Statistic)},
+			Unit:       types.StandardUnit(metric.Unit),
 		}
 
 		result, err := cwClient.GetMetricStatistics(ctx, input)
@@ -125,8 +129,25 @@ func S3Metrics(ctx context.Context, cwClient *cloudwatch.Client, bucketName stri
 			continue
 		}
 
-		if len(result.Datapoints) > 0 && result.Datapoints[0].Sum != nil {
-			metrics[metric.Name] = *result.Datapoints[0].Sum
+		if len(result.Datapoints) > 0 {
+			var value float64
+			switch metric.Statistic {
+			case "Sum":
+				if result.Datapoints[0].Sum != nil {
+					value = *result.Datapoints[0].Sum
+				}
+			case "Average":
+				if result.Datapoints[0].Average != nil {
+					value = *result.Datapoints[0].Average
+				}
+			}
+
+			// Convert bytes to MB for readability
+			if metric.Unit == "Bytes" {
+				value = value / (1024.0 * 1024.0)
+			}
+
+			metrics[metric.Name] = value
 		} else {
 			metrics[metric.Name] = 0.0
 		}

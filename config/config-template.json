@@ -41,6 +41,7 @@
 		},
 		"waf": {
 			"enabled": false,
+			"scope": "",
 			"webACLId": "",
 			"webACLName": ""
 		},

@@ -35,7 +35,7 @@ type DeploymentConfig struct {
 
 type MonitoringConfig struct {
 	Timezone        string `json:"timezone"`
-	DefaultPeriod   int    `json:"defaultPeriod"`   // Hours
+	DefaultPeriod   int    `json:"defaultPeriod"`   // Hours (0 = disabled)
 	DailyReportHour int    `json:"dailyReportHour"` // Hour of day (0-23)
 }
 
@@ -80,6 +80,7 @@ type ServiceConfig struct {
 		Enabled    bool   `json:"enabled"`
 		WebACLID   string `json:"webACLId"`
 		WebACLName string `json:"webACLName"`
+		Scope      string `json:"scope"` // "REGIONAL" or "CLOUDFRONT"
 	} `json:"waf"`
 
 	DynamoDB struct {
@@ -118,8 +119,8 @@ func validateConfig(config *Config) error {
 	if config.Global.Monitoring.DailyReportHour < 0 || config.Global.Monitoring.DailyReportHour > 23 {
 		return fmt.Errorf("dailyReportHour must be between 0 and 23")
 	}
-	if config.Global.Monitoring.DefaultPeriod <= 0 {
-		return fmt.Errorf("defaultPeriod must be greater than 0")
+	if config.Global.Monitoring.DefaultPeriod < 0 {
+		return fmt.Errorf("defaultPeriod must be >= 0")
 	}
 
 	if config.Services.EC2.Enabled && config.Services.EC2.InstanceID == "" {
@@ -146,6 +147,9 @@ func validateConfig(config *Config) error {
 		}
 		if config.Services.WAF.WebACLName == "" {
 			return fmt.Errorf("WAF is enabled but webACLName is empty")
+		}
+		if config.Services.WAF.Scope != "REGIONAL" && config.Services.WAF.Scope != "CLOUDFRONT" && config.Services.WAF.Scope != "" {
+			return fmt.Errorf("WAF scope must be either 'REGIONAL', 'CLOUDFRONT' or empty (default to REGIONAL)")
 		}
 	}
 	if config.Services.DynamoDB.Enabled && len(config.Services.DynamoDB.TableNames) == 0 {
@@ -176,6 +180,11 @@ func (c *Config) GetTimeParams() (*TimeParams, error) {
 	now := time.Now().In(loc)
 	isDailyReport := now.Hour() == c.Global.Monitoring.DailyReportHour
 
+	// Exit early if no defaultPeriod is set and it's not daily report hour
+	if c.Global.Monitoring.DefaultPeriod == 0 && !isDailyReport {
+		return nil, nil
+	}
+
 	var startTime time.Time
 	if isDailyReport {
 		// Daily report: look back 24 hours
@@ -183,6 +192,7 @@ func (c *Config) GetTimeParams() (*TimeParams, error) {
 	} else {
 		// Regular report: use configured period
 		startTime = now.Add(-time.Duration(c.Global.Monitoring.DefaultPeriod) * time.Hour)
+
 	}
 
 	return &TimeParams{

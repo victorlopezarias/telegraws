@@ -54,6 +54,7 @@ cp config/config-template.json config/config.json
 - WAF monitoring collects WAFs metrics attached to ALB.
 - Some S3 metrics require S3 request metrics to be enabled.
 - CloudWatch Agent monitors disk_used_percent and mem_used_percent.
+- If you just want daily reports, set defaultPeriod to 0 on config.json.
 - Telegram has 4096 character limit per message.
 
 ## Metrics

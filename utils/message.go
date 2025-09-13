@@ -60,6 +60,8 @@ func BuildMessage(cfg *config.Config, timeParams *config.TimeParams, allMetrics 
 			messageBuilder.WriteString(fmt.Sprintf("Requests: %.0f\n", s3Metrics["AllRequests"]))
 			messageBuilder.WriteString(fmt.Sprintf("4xx Errors: %.0f\n", s3Metrics["4xxErrors"]))
 			messageBuilder.WriteString(fmt.Sprintf("5xx Errors: %.0f\n", s3Metrics["5xxErrors"]))
+			messageBuilder.WriteString(fmt.Sprintf("Uploaded: %.2f MB\n", s3Metrics["BytesUploaded"]))
+			messageBuilder.WriteString(fmt.Sprintf("Downloaded: %.2f MB\n", s3Metrics["BytesDownloaded"]))
 			messageBuilder.WriteString("\n")
 		}
 	}
@@ -91,11 +93,12 @@ func BuildMessage(cfg *config.Config, timeParams *config.TimeParams, allMetrics 
 			cfMetrics := cfData.(map[string]float64)
 			messageBuilder.WriteString(fmt.Sprintf("*CloudFront* %s\n", cfg.Services.CloudFront.DistributionID))
 			messageBuilder.WriteString(fmt.Sprintf("Requests: %.0f\n", cfMetrics["Requests"]))
-			messageBuilder.WriteString(fmt.Sprintf("Data Downloaded: %.2f MB\n", cfMetrics["BytesDownloaded"])) // ← ADD THIS
 			messageBuilder.WriteString(fmt.Sprintf("Cache Hit Rate: %.2f%%\n", cfMetrics["CacheHitRate"]))
 			messageBuilder.WriteString(fmt.Sprintf("4xx Error Rate: %.2f%%\n", cfMetrics["4xxErrorRate"]))
 			messageBuilder.WriteString(fmt.Sprintf("5xx Error Rate: %.2f%%\n", cfMetrics["5xxErrorRate"]))
 			messageBuilder.WriteString(fmt.Sprintf("Origin Latency: %.2f ms\n", cfMetrics["OriginLatency"]))
+			messageBuilder.WriteString(fmt.Sprintf(" Uploaded: %.2f MB\n", cfMetrics["BytesUploaded"]))
+			messageBuilder.WriteString(fmt.Sprintf(" Downloaded: %.2f MB\n", cfMetrics["BytesDownloaded"]))
 			messageBuilder.WriteString("\n")
 		}
 	}

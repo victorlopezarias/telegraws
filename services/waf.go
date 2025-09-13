@@ -15,16 +15,21 @@ import (
 )
 
 // Helper function to get ALB ARN from WAF
-func getALBARNFromWAF(ctx context.Context, wafClient *wafv2.Client, webACLName, webACLId string) (string, error) {
+func getALBARNFromWAF(ctx context.Context, wafClient *wafv2.Client, webACLName, webACLId string, scope wafTypes.Scope) (string, error) {
 	webACLInput := &wafv2.GetWebACLInput{
 		Name:  aws.String(webACLName),
-		Scope: wafTypes.ScopeRegional,
+		Scope: scope,
 		Id:    aws.String(webACLId),
 	}
 
 	webACL, err := wafClient.GetWebACL(ctx, webACLInput)
 	if err != nil {
 		return "", fmt.Errorf("failed to get WAF details: %w", err)
+	}
+
+	// CloudFront scope has no ALB associations
+	if scope == wafTypes.ScopeCloudfront {
+		return "", nil
 	}
 
 	resourcesInput := &wafv2.ListResourcesForWebACLInput{
@@ -48,9 +53,18 @@ func getALBARNFromWAF(ctx context.Context, wafClient *wafv2.Client, webACLName, 
 	return resourcesOutput.ResourceArns[0], nil
 }
 
-func WAFMetrics(ctx context.Context, wafClient *wafv2.Client, cwClient *cloudwatch.Client, webACLId, webACLName string, timeParams map[string]time.Time) (map[string]float64, error) {
-	albARN, err := getALBARNFromWAF(ctx, wafClient, webACLName, webACLId)
-	if err != nil {
+func WAFMetrics(ctx context.Context, wafClient *wafv2.Client, cwClient *cloudwatch.Client, webACLId, webACLName string, scopeStr string, timeParams map[string]time.Time) (map[string]float64, error) {
+	// default → REGIONAL
+	var scope wafTypes.Scope
+	switch scopeStr {
+	case "CLOUDFRONT":
+		scope = wafTypes.ScopeCloudfront
+	default:
+		scope = wafTypes.ScopeRegional
+	}
+
+	albARN, err := getALBARNFromWAF(ctx, wafClient, webACLName, webACLId, scope)
+	if err != nil && scope == wafTypes.ScopeRegional {
 		return nil, fmt.Errorf("failed to get ALB ARN from WAF: %w", err)
 	}
 
@@ -69,19 +83,25 @@ func WAFMetrics(ctx context.Context, wafClient *wafv2.Client, cwClient *cloudwat
 	}
 
 	for _, metric := range wafMetrics {
+		var dimensions []types.Dimension
+
+		if scope == wafTypes.ScopeCloudfront {
+			// CloudFront WAF metric dimension is WebACL
+			dimensions = []types.Dimension{
+				{Name: aws.String("WebACL"), Value: aws.String(webACLName)},
+			}
+		} else {
+			// Regional WAF (ALB)
+			dimensions = []types.Dimension{
+				{Name: aws.String("Resource"), Value: aws.String(albARN)},
+				{Name: aws.String("ResourceType"), Value: aws.String("ALB")},
+			}
+		}
+
 		input := &cloudwatch.GetMetricStatisticsInput{
 			Namespace:  aws.String("AWS/WAFV2"),
 			MetricName: aws.String(metric.Name),
-			Dimensions: []types.Dimension{
-				{
-					Name:  aws.String("Resource"),
-					Value: aws.String(albARN),
-				},
-				{
-					Name:  aws.String("ResourceType"),
-					Value: aws.String("ALB"),
-				},
-			},
+			Dimensions: dimensions,
 			StartTime:  aws.Time(timeParams["startTime"]),
 			EndTime:    aws.Time(timeParams["endTime"]),
 			Period:     period,
@@ -95,10 +115,11 @@ func WAFMetrics(ctx context.Context, wafClient *wafv2.Client, cwClient *cloudwat
 				zap.String("metricName", metric.Name),
 				zap.String("statistic", metric.Statistic),
 				zap.String("webACLId", webACLId),
-				zap.String("albARN", albARN),
+				zap.String("webACLName", webACLName),
+				zap.String("scope", scopeStr),
 				zap.Int32("period", *period),
 			)
-			continue // Continue with other metrics if one fails
+			continue
 		}
 
 		if len(result.Datapoints) > 0 {

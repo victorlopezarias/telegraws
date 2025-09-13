@@ -29,6 +29,10 @@ func logic(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to calculate time parameters: %v", err)
 	}
+	if timeParams == nil {
+		utils.Logger.Info("Skipping execution: outside of daily report hour and no defaultPeriod configured")
+		return nil
+	}
 
 	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
 	if err != nil {
@@ -109,14 +113,18 @@ func logic(ctx context.Context) error {
 		}
 	}
 
+	scope := appConfig.Services.WAF.Scope
+	if scope == "" {
+		scope = "REGIONAL" // default
+	}
+
 	if appConfig.Services.WAF.Enabled {
-		wafMetrics, err := services.WAFMetrics(ctx, wafClient, cwClient, appConfig.Services.WAF.WebACLID, appConfig.Services.WAF.WebACLName, timeParamsMap)
+		wafMetrics, err := services.WAFMetrics(ctx, wafClient, cwClient, appConfig.Services.WAF.WebACLID, appConfig.Services.WAF.WebACLName, scope, timeParamsMap)
 		if err != nil {
 			utils.Logger.Error("Failed to get WAF metrics", zap.Error(err))
 		} else {
 			allMetrics["waf"] = wafMetrics
 		}
-
 	}
 
 	if appConfig.Services.DynamoDB.Enabled {
