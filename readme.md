@@ -47,7 +47,8 @@ cp config/config-template.json config/config.json
   Month DayOfWeek Year). Requires raw expression, eg:
   `"lambdaCronExpression": "0 * * * ? *"`.
 - timezone: Go time.LoadLocation compatible timezone.
-- defaultPeriod: Hours to look back for regular reports (1 = last hour).
+- defaultPeriod: Hours to look back for regular reports (1 = last hour). Set to
+  0 to only receive daily reports.
 - dailyReportHour: Hour to send daily summary (respects timezone).
 - CloudWatch Logs collection counts INFO/WARN/ERROR so structured logging is
   required.
@@ -63,13 +64,14 @@ cp config/config-template.json config/config.json
 - EC2: CPU Utilization (avg/max), Network I/O, Status Checks. If CloudWatch
   Agent: mem_used_percent, disk_used_percent.
 
-- S3: (Daily Reports Only) Bucket Size, Request Count, Error Rates.
+- S3: (Daily Reports Only) Bucket Size, Request Count, Error Rates, Bytes
+  Uploaded, Bytes Downloaded.
 
 - ALB: Request Count, Response Time, HTTP Status Codes, Healthy/Unhealthy Hosts,
   ALB Errors.
 
-- CloudFront: Requests, Data Downloaded, Cache Hit Rate, Error Rates, Origin
-  Latency.
+- CloudFront: Requests, Bytes Uploaded, Bytes Downloaded, Cache Hit Rate, Error
+  Rates, Origin Latency.
 
 - DynamoDB: Request Count, Throttles, Latency, Consumed Capacity, Error Counts.
 
@@ -89,7 +91,6 @@ cp config/config-template.json config/config.json
 - Enhanced AWS Support: ECS/EKS, Fargate, API Gateway.
 - Multi-Resource: Multiple IDs per service type.
 - Message Splitting: Handle Telegram 4096 character limit.
-- Environment Variables: Support for .env configuration.
 - Cross-Platform: Windows support for build script.
 - Emoji Support: Optional emoji integration in messages.
 - Architecture Options: x86_64 Lambda support.
